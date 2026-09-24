@@ -4,20 +4,29 @@ let mongoMemoryServer = null;
 
 const connectDB = async () => {
   const uri = process.env.MONGODB_URI;
+  const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL;
 
   if (uri && uri.trim() !== '') {
     try {
-      console.log(`Attempting to connect to MongoDB at: ${uri}`);
+      console.log(`Attempting to connect to MongoDB Atlas...`);
       const conn = await mongoose.connect(uri, {
-        serverSelectionTimeoutMS: 3000
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 10000,
       });
       console.log(`Connected to MongoDB: ${conn.connection.host}`);
       return conn;
     } catch (err) {
+      if (isProduction) {
+        // In production (Vercel), never try in-memory fallback — it won't work
+        throw new Error(`MongoDB Atlas connection failed: ${err.message}`);
+      }
       console.warn(`Could not connect to external MongoDB: ${err.message}. Falling back to in-memory MongoDB...`);
     }
+  } else if (isProduction) {
+    throw new Error('MONGODB_URI environment variable is not set. Please configure it in your Vercel project settings.');
   }
 
+  // Local/test fallback: use in-memory MongoDB
   try {
     const { MongoMemoryServer } = require('mongodb-memory-server');
     console.log('Spinning up embedded MongoDB Memory Server...');

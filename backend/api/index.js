@@ -25,11 +25,21 @@ const ensureConnected = async () => {
 };
 
 module.exports = async (req, res) => {
+  // Always set CORS headers — even before Express middleware runs
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
   try {
     await ensureConnected();
   } catch (err) {
-    console.error('[Vercel] DB connection error:', err);
-    return res.status(503).json({ success: false, message: 'Database unavailable' });
+    console.error('[Vercel] DB connection error:', err.message);
+    return res.status(503).json({ success: false, message: 'Database unavailable', error: err.message });
   }
   return app(req, res);
 };
